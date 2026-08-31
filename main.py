@@ -12,8 +12,9 @@ from discord.ext import commands
 from discord import app_commands
 import sqlite3
 from datetime import datetime
+import os
 
-TOKEN = "MTU0NDEyMjEwNTc2MTg5MDM5NA.Gyd0Vo.eHjU1rSgnIwuqtZrB5AK06dBhQXdipOkSKzmNU"  # REPLACE WITH YOUR TOKEN
+TOKEN = os.getenv("TOKEN")
 OWNER_ID = 1543710400753959072      # YOUR DISCORD USER ID
 DB_FILE = "leaderboard.db"
 
