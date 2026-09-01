@@ -4,13 +4,15 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 import sqlite3
+import asyncio
+import time
 from datetime import datetime
 
 # ============================================================
 # CONFIG — Read from environment variables
 # ============================================================
 
-TOKEN = os.getenv("TOKEN")          # ← SET THIS IN RAILWAY VARIABLES
+TOKEN = os.getenv("TOKEN")
 OWNER_ID = 1528719270127865982      # YOUR DISCORD USER ID
 DB_FILE = "leaderboard.db"
 
@@ -155,7 +157,7 @@ async def on_ready():
     print(f"👑 Owner ID: {OWNER_ID}")
     try:
         synced = await bot.tree.sync()
-        print(f"✅ Synced {len(synced)} commands")
+        print(f"✅ Synced {len(synced)} commands globally")
     except Exception as e:
         print(f"❌ Sync error: {e}")
     reset_today_hits()
@@ -168,6 +170,8 @@ def is_owner(interaction: discord.Interaction):
 # ============================================================
 # COMMANDS
 # ============================================================
+
+# ---- Leaderboard & Hits ----
 
 @bot.tree.command(name="leaderboard", description="View the hit leaderboard")
 async def leaderboard(interaction: discord.Interaction):
@@ -202,6 +206,32 @@ async def hits(interaction: discord.Interaction):
     embed.add_field(name="Role", value=user_data[6].upper(), inline=True)
     embed.set_footer(text=f"ID: {user_data[1]}")
     await interaction.response.send_message(embed=embed)
+
+# ---- Hit Notification ----
+
+@bot.tree.command(name="hit_notify", description="[USER] Notify owner that you got a hit")
+async def hit_notify(interaction: discord.Interaction):
+    user_data = get_user_by_discord(interaction.user.id)
+    if not user_data:
+        await interaction.response.send_message("❌ You're not in the system yet. Use `/hits` to register.", ephemeral=True)
+        return
+    owner = await bot.fetch_user(OWNER_ID)
+    if owner:
+        embed = discord.Embed(
+            title="🔔 Hit Notification",
+            description=f"{interaction.user.mention} got a hit!",
+            color=0xfbbf24
+        )
+        embed.add_field(name="Username", value=user_data[2], inline=True)
+        embed.add_field(name="Total Hits", value=user_data[3], inline=True)
+        embed.add_field(name="Today", value=user_data[4], inline=True)
+        embed.set_footer(text=f"User ID: {interaction.user.id}")
+        await owner.send(embed=embed)
+        await interaction.response.send_message("✅ Owner has been notified of your hit!", ephemeral=True)
+    else:
+        await interaction.response.send_message("❌ Could not notify owner.", ephemeral=True)
+
+# ---- Owner Commands ----
 
 @bot.tree.command(name="give", description="[OWNER] Give hits to a user")
 @app_commands.describe(username="The username to give hits to", amount="Number of hits to give")
@@ -321,6 +351,74 @@ async def dashboard(interaction: discord.Interaction):
         embed.add_field(name=f"{user[2]} {role_emoji}", value=f"**{user[3]}** hits | Today: {user[4]} | Total: {user[5]} | Role: **{user[6].upper()}**", inline=False)
     embed.set_footer(text="Use /give, /remove, /add, /delete, /setrole, /reset to manage")
     await interaction.followup.send(embed=embed)
+
+# ============================================================
+# FLOOD COMMANDS (OWNER ONLY)
+# ============================================================
+
+@bot.tree.command(name="flood", description="[OWNER] Flood the current channel with messages")
+@app_commands.describe(count="Number of messages to send", message="Message to spam (optional)")
+async def flood(interaction: discord.Interaction, count: int = 10, message: str = None):
+    if not is_owner(interaction):
+        await interaction.response.send_message("❌ You must be the owner to use this command.", ephemeral=True)
+        return
+    if count < 1 or count > 200:
+        await interaction.response.send_message("❌ Count must be between 1 and 200.", ephemeral=True)
+        return
+    await interaction.response.send_message(f"⏳ Flooding {count} messages...", ephemeral=True)
+    msg = message or "🌊 Flooding the chat! #flood"
+    channel = interaction.channel
+    for i in range(count):
+        await channel.send(f"{msg} [{i+1}/{count}]")
+        await asyncio.sleep(0.1)  # Slight delay to avoid rate limits
+
+@bot.tree.command(name="flood_customize", description="[OWNER] Flood with custom message and count")
+@app_commands.describe(message="The message to spam", count="Number of messages (1-200)")
+async def flood_customize(interaction: discord.Interaction, message: str, count: int = 10):
+    if not is_owner(interaction):
+        await interaction.response.send_message("❌ You must be the owner to use this command.", ephemeral=True)
+        return
+    if count < 1 or count > 200:
+        await interaction.response.send_message("❌ Count must be between 1 and 200.", ephemeral=True)
+        return
+    await interaction.response.send_message(f"⏳ Flooding {count} messages with custom message...", ephemeral=True)
+    channel = interaction.channel
+    for i in range(count):
+        await channel.send(f"{message} [{i+1}/{count}]")
+        await asyncio.sleep(0.1)
+
+@bot.tree.command(name="flood_links", description="[OWNER] Flood the channel with random links")
+@app_commands.describe(count="Number of links to send")
+async def flood_links(interaction: discord.Interaction, count: int = 10):
+    if not is_owner(interaction):
+        await interaction.response.send_message("❌ You must be the owner to use this command.", ephemeral=True)
+        return
+    if count < 1 or count > 200:
+        await interaction.response.send_message("❌ Count must be between 1 and 200.", ephemeral=True)
+        return
+    await interaction.response.send_message(f"⏳ Flooding {count} links...", ephemeral=True)
+    links = [
+        "https://youtu.be/dQw4w9WgXcQ",
+        "https://www.youtube.com/watch?v=6n3pFFPSlW4",
+        "https://www.youtube.com/watch?v=8v_4O44bP9Y",
+        "https://discord.gg/example",
+        "https://www.google.com/search?q=random",
+        "https://www.reddit.com/r/all",
+        "https://www.xkcd.com/",
+        "https://www.wikipedia.org/",
+        "https://www.github.com/",
+        "https://www.stackoverflow.com/"
+    ]
+    channel = interaction.channel
+    import random
+    for i in range(count):
+        link = random.choice(links)
+        await channel.send(f"🔗 {link} [{i+1}/{count}]")
+        await asyncio.sleep(0.1)
+
+# ============================================================
+# ERROR HANDLING
+# ============================================================
 
 @bot.tree.error
 async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
