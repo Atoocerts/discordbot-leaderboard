@@ -5,7 +5,6 @@ from discord.ext import commands
 from discord import app_commands
 import sqlite3
 import asyncio
-import time
 from datetime import datetime
 
 # ============================================================
@@ -171,8 +170,6 @@ def is_owner(interaction: discord.Interaction):
 # COMMANDS
 # ============================================================
 
-# ---- Leaderboard & Hits ----
-
 @bot.tree.command(name="leaderboard", description="View the hit leaderboard")
 async def leaderboard(interaction: discord.Interaction):
     await interaction.response.defer()
@@ -207,9 +204,7 @@ async def hits(interaction: discord.Interaction):
     embed.set_footer(text=f"ID: {user_data[1]}")
     await interaction.response.send_message(embed=embed)
 
-# ---- Hit Notification ----
-
-@bot.tree.command(name="hit_notify", description="[USER] Notify owner that you got a hit")
+@bot.tree.command(name="hit_notify", description="Notify owner that you got a hit")
 async def hit_notify(interaction: discord.Interaction):
     user_data = get_user_by_discord(interaction.user.id)
     if not user_data:
@@ -227,34 +222,32 @@ async def hit_notify(interaction: discord.Interaction):
         embed.add_field(name="Today", value=user_data[4], inline=True)
         embed.set_footer(text=f"User ID: {interaction.user.id}")
         await owner.send(embed=embed)
-        await interaction.response.send_message("✅ Owner has been notified of your hit!", ephemeral=True)
+        await interaction.response.send_message("✅ Owner has been notified!", ephemeral=True)
     else:
         await interaction.response.send_message("❌ Could not notify owner.", ephemeral=True)
-
-# ---- Owner Commands ----
 
 @bot.tree.command(name="give", description="[OWNER] Give hits to a user")
 @app_commands.describe(username="The username to give hits to", amount="Number of hits to give")
 async def give(interaction: discord.Interaction, username: str, amount: int = 1):
     if not is_owner(interaction):
-        await interaction.response.send_message("❌ You must be the owner to use this command.", ephemeral=True)
+        await interaction.response.send_message("❌ Owner only.", ephemeral=True)
         return
     if amount <= 0:
         await interaction.response.send_message("❌ Amount must be positive.", ephemeral=True)
         return
     user = get_user(username)
     if not user:
-        await interaction.response.send_message(f"❌ User `{username}` not found. Use `/add` first.", ephemeral=True)
+        await interaction.response.send_message(f"❌ User `{username}` not found.", ephemeral=True)
         return
     add_hits(username, amount)
     user = get_user(username)
-    await interaction.response.send_message(f"✅ **+{amount}** hits given to **{username}**!\nTotal: **{user[3]}** hits")
+    await interaction.response.send_message(f"✅ **+{amount}** hits to **{username}**! Total: **{user[3]}**")
 
 @bot.tree.command(name="remove", description="[OWNER] Remove hits from a user")
 @app_commands.describe(username="The username to remove hits from", amount="Number of hits to remove")
 async def remove(interaction: discord.Interaction, username: str, amount: int = 1):
     if not is_owner(interaction):
-        await interaction.response.send_message("❌ You must be the owner to use this command.", ephemeral=True)
+        await interaction.response.send_message("❌ Owner only.", ephemeral=True)
         return
     if amount <= 0:
         await interaction.response.send_message("❌ Amount must be positive.", ephemeral=True)
@@ -268,31 +261,31 @@ async def remove(interaction: discord.Interaction, username: str, amount: int = 
         return
     remove_hits(username, amount)
     user = get_user(username)
-    await interaction.response.send_message(f"✅ **-{amount}** hits removed from **{username}**!\nTotal: **{user[3]}** hits")
+    await interaction.response.send_message(f"✅ **-{amount}** hits from **{username}**! Total: **{user[3]}**")
 
 @bot.tree.command(name="add", description="[OWNER] Add a user to the leaderboard")
 @app_commands.describe(username="The username to add", role="Role: owner, staff, or user")
 async def add(interaction: discord.Interaction, username: str, role: str = "user"):
     if not is_owner(interaction):
-        await interaction.response.send_message("❌ You must be the owner to use this command.", ephemeral=True)
+        await interaction.response.send_message("❌ Owner only.", ephemeral=True)
         return
     if role not in ['owner', 'staff', 'user']:
-        await interaction.response.send_message("❌ Role must be `owner`, `staff`, or `user`.", ephemeral=True)
+        await interaction.response.send_message("❌ Invalid role.", ephemeral=True)
         return
     if get_user(username):
-        await interaction.response.send_message(f"❌ User `{username}` already exists.", ephemeral=True)
+        await interaction.response.send_message(f"❌ User `{username}` exists.", ephemeral=True)
         return
     add_user(username, None, role)
-    await interaction.response.send_message(f"✅ Added **{username}** as **{role.upper()}**!\nUse `/give {username}` to add hits.")
+    await interaction.response.send_message(f"✅ Added **{username}** as **{role.upper()}**!")
 
 @bot.tree.command(name="delete", description="[OWNER] Delete a user from the leaderboard")
 @app_commands.describe(username="The username to delete")
 async def delete(interaction: discord.Interaction, username: str):
     if not is_owner(interaction):
-        await interaction.response.send_message("❌ You must be the owner to use this command.", ephemeral=True)
+        await interaction.response.send_message("❌ Owner only.", ephemeral=True)
         return
     if delete_user(username):
-        await interaction.response.send_message(f"✅ Deleted **{username}** from the leaderboard.")
+        await interaction.response.send_message(f"✅ Deleted **{username}**.")
     else:
         await interaction.response.send_message(f"❌ User `{username}` not found.", ephemeral=True)
 
@@ -300,10 +293,10 @@ async def delete(interaction: discord.Interaction, username: str):
 @app_commands.describe(username="The username", role="Role: owner, staff, or user")
 async def setrole(interaction: discord.Interaction, username: str, role: str):
     if not is_owner(interaction):
-        await interaction.response.send_message("❌ You must be the owner to use this command.", ephemeral=True)
+        await interaction.response.send_message("❌ Owner only.", ephemeral=True)
         return
     if role not in ['owner', 'staff', 'user']:
-        await interaction.response.send_message("❌ Role must be `owner`, `staff`, or `user`.", ephemeral=True)
+        await interaction.response.send_message("❌ Invalid role.", ephemeral=True)
         return
     if not get_user(username):
         await interaction.response.send_message(f"❌ User `{username}` not found.", ephemeral=True)
@@ -315,28 +308,28 @@ async def setrole(interaction: discord.Interaction, username: str, role: str):
 @app_commands.describe(username="The username to reset")
 async def reset(interaction: discord.Interaction, username: str):
     if not is_owner(interaction):
-        await interaction.response.send_message("❌ You must be the owner to use this command.", ephemeral=True)
+        await interaction.response.send_message("❌ Owner only.", ephemeral=True)
         return
     if not get_user(username):
         await interaction.response.send_message(f"❌ User `{username}` not found.", ephemeral=True)
         return
     reset_hits(username)
-    await interaction.response.send_message(f"✅ Reset **{username}**'s hits to 0!")
+    await interaction.response.send_message(f"✅ Reset **{username}** to 0!")
 
 @bot.tree.command(name="resetall", description="[OWNER] Reset ALL users' hits to 0")
 async def resetall(interaction: discord.Interaction):
     if not is_owner(interaction):
-        await interaction.response.send_message("❌ You must be the owner to use this command.", ephemeral=True)
+        await interaction.response.send_message("❌ Owner only.", ephemeral=True)
         return
     users = get_all_users()
     for user in users:
         reset_hits(user[2])
-    await interaction.response.send_message("✅ Reset ALL users' hits to 0!")
+    await interaction.response.send_message("✅ Reset ALL users to 0!")
 
 @bot.tree.command(name="dashboard", description="[OWNER] View full dashboard with all users")
 async def dashboard(interaction: discord.Interaction):
     if not is_owner(interaction):
-        await interaction.response.send_message("❌ You must be the owner to use this command.", ephemeral=True)
+        await interaction.response.send_message("❌ Owner only.", ephemeral=True)
         return
     await interaction.response.defer()
     users = get_all_users()
@@ -353,68 +346,29 @@ async def dashboard(interaction: discord.Interaction):
     await interaction.followup.send(embed=embed)
 
 # ============================================================
-# FLOOD COMMANDS (OWNER ONLY)
+# EXTREME FAST FLOOD — NO DELAY, NO COUNTER
 # ============================================================
 
-@bot.tree.command(name="flood", description="[OWNER] Flood the current channel with messages")
-@app_commands.describe(count="Number of messages to send", message="Message to spam (optional)")
+@bot.tree.command(name="flood", description="[OWNER] Extreme fast flood — spam any message or links")
+@app_commands.describe(count="Number of messages to send (max 500)", message="Message to spam (leave empty for Discord invite link)")
 async def flood(interaction: discord.Interaction, count: int = 10, message: str = None):
     if not is_owner(interaction):
-        await interaction.response.send_message("❌ You must be the owner to use this command.", ephemeral=True)
+        await interaction.response.send_message("❌ Owner only.", ephemeral=True)
         return
-    if count < 1 or count > 200:
-        await interaction.response.send_message("❌ Count must be between 1 and 200.", ephemeral=True)
+    
+    if count < 1 or count > 500:
+        await interaction.response.send_message("❌ Count must be between 1 and 500.", ephemeral=True)
         return
+
     await interaction.response.send_message(f"⏳ Flooding {count} messages...", ephemeral=True)
-    msg = message or "🌊 Flooding the chat! #flood"
+    
     channel = interaction.channel
-    for i in range(count):
-        await channel.send(f"{msg} [{i+1}/{count}]")
-        await asyncio.sleep(0.1)  # Slight delay to avoid rate limits
-
-@bot.tree.command(name="flood_customize", description="[OWNER] Flood with custom message and count")
-@app_commands.describe(message="The message to spam", count="Number of messages (1-200)")
-async def flood_customize(interaction: discord.Interaction, message: str, count: int = 10):
-    if not is_owner(interaction):
-        await interaction.response.send_message("❌ You must be the owner to use this command.", ephemeral=True)
-        return
-    if count < 1 or count > 200:
-        await interaction.response.send_message("❌ Count must be between 1 and 200.", ephemeral=True)
-        return
-    await interaction.response.send_message(f"⏳ Flooding {count} messages with custom message...", ephemeral=True)
-    channel = interaction.channel
-    for i in range(count):
-        await channel.send(f"{message} [{i+1}/{count}]")
-        await asyncio.sleep(0.1)
-
-@bot.tree.command(name="flood_links", description="[OWNER] Flood the channel with random links")
-@app_commands.describe(count="Number of links to send")
-async def flood_links(interaction: discord.Interaction, count: int = 10):
-    if not is_owner(interaction):
-        await interaction.response.send_message("❌ You must be the owner to use this command.", ephemeral=True)
-        return
-    if count < 1 or count > 200:
-        await interaction.response.send_message("❌ Count must be between 1 and 200.", ephemeral=True)
-        return
-    await interaction.response.send_message(f"⏳ Flooding {count} links...", ephemeral=True)
-    links = [
-        "https://youtu.be/dQw4w9WgXcQ",
-        "https://www.youtube.com/watch?v=6n3pFFPSlW4",
-        "https://www.youtube.com/watch?v=8v_4O44bP9Y",
-        "https://discord.gg/example",
-        "https://www.google.com/search?q=random",
-        "https://www.reddit.com/r/all",
-        "https://www.xkcd.com/",
-        "https://www.wikipedia.org/",
-        "https://www.github.com/",
-        "https://www.stackoverflow.com/"
-    ]
-    channel = interaction.channel
-    import random
-    for i in range(count):
-        link = random.choice(links)
-        await channel.send(f"🔗 {link} [{i+1}/{count}]")
-        await asyncio.sleep(0.1)
+    msg = message or "https://discord.gg/vR57dshsC8"
+    
+    # Send messages as fast as possible with no delay
+    for _ in range(count):
+        await channel.send(msg)
+        # No delay — pure speed
 
 # ============================================================
 # ERROR HANDLING
