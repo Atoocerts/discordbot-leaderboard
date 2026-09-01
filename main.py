@@ -1,20 +1,16 @@
-﻿# ============================================================
-# ADD THIS FIRST — Fix for Python 3.14 (audioop removed)
-# ============================================================
-import audioop
-
-# ============================================================
-# DISCORD BOT — HIT LEADERBOARD
-# ============================================================
-
+import os
+import audioop  # Fake audioop for Python 3.14 compatibility
 import discord
 from discord.ext import commands
 from discord import app_commands
 import sqlite3
 from datetime import datetime
-import os
 
-TOKEN = os.getenv("TOKEN")
+# ============================================================
+# CONFIG — Read from environment variables
+# ============================================================
+
+TOKEN = os.getenv("TOKEN")          # ← SET THIS IN RAILWAY VARIABLES
 OWNER_ID = 1543710400753959072      # YOUR DISCORD USER ID
 DB_FILE = "leaderboard.db"
 
@@ -334,5 +330,13 @@ async def on_app_command_error(interaction: discord.Interaction, error: app_comm
         await interaction.response.send_message(f"❌ Error: {error}", ephemeral=True)
         print(f"Error: {error}")
 
+# ============================================================
+# RUN
+# ============================================================
+
 if __name__ == "__main__":
-    bot.run(TOKEN)
+    if not TOKEN:
+        print("❌ ERROR: TOKEN environment variable is not set!")
+        print("   Please add TOKEN to Railway Variables.")
+    else:
+        bot.run(TOKEN)
