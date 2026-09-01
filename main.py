@@ -371,6 +371,22 @@ async def flood(interaction: discord.Interaction, count: int = 10, message: str 
         # No delay — pure speed
 
 # ============================================================
+# SYNC COMMAND (FORCE RESYNC)
+# ============================================================
+
+@bot.tree.command(name="sync", description="[OWNER] Force sync slash commands globally")
+async def sync(interaction: discord.Interaction):
+    if not is_owner(interaction):
+        await interaction.response.send_message("❌ Owner only.", ephemeral=True)
+        return
+    await interaction.response.defer(ephemeral=True)
+    try:
+        synced = await bot.tree.sync()
+        await interaction.followup.send(f"✅ Synced {len(synced)} commands globally!")
+    except Exception as e:
+        await interaction.followup.send(f"❌ Error: {e}")
+
+# ============================================================
 # ERROR HANDLING
 # ============================================================
 
