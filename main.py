@@ -11,7 +11,7 @@ from datetime import datetime
 # ============================================================
 
 TOKEN = os.getenv("TOKEN")          # ← SET THIS IN RAILWAY VARIABLES
-OWNER_ID = 1543710400753959072      # YOUR DISCORD USER ID
+OWNER_ID = 1528719270127865982      # YOUR DISCORD USER ID
 DB_FILE = "leaderboard.db"
 
 # ============================================================
